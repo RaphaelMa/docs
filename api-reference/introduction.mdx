@@ -1,33 +1,112 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: 'Introdução'
+description: 'Documentação completa da API Verifica AI para análise de contratos'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Bem-vindo à API Verifica AI
 
-## Welcome
+A API Verifica AI oferece uma solução completa para análise de contratos utilizando inteligência artificial. Com esta API, você pode:
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+- Gerenciar usuários e contratos
+- Fazer upload de contratos (PDF, DOC, DOCX)
+- Realizar análises de risco automatizadas
+- Obter recomendações detalhadas sobre cláusulas contratuais
+- Gerenciar credenciais de API
 
 <Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
+  title="Especificação OpenAPI"
+  icon="code"
+  href="https://github.com/verifica-ai/docs/blob/main/api-reference/openapi.yaml"
 >
-  View the OpenAPI specification file
+  Ver a especificação OpenAPI completa
 </Card>
 
-## Authentication
+## Autenticação
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+A maioria dos endpoints da API requer autenticação via Firebase. Apenas os endpoints de **Health Check** e **Criação de Usuário** não requerem autenticação.
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+### Como obter o token
+
+No frontend, após o login com Firebase:
+
+```javascript
+import { getAuth } from 'firebase/auth';
+
+const auth = getAuth();
+const user = auth.currentUser;
+
+if (user) {
+  const token = await user.getIdToken();
+  // Use este token no header Authorization
+}
 ```
+
+### Header de autenticação
+
+Inclua o token no header `Authorization` de todas as requisições autenticadas:
+
+```
+Authorization: Bearer SEU_TOKEN_FIREBASE
+```
+
+## Servidores
+
+A API está disponível em dois ambientes:
+
+- **Produção**: `https://api.verifica.ia.br`
+- **Desenvolvimento**: `http://localhost:3333`
+
+## Estrutura da API
+
+A API está organizada em cinco grupos principais:
+
+<AccordionGroup>
+  <Accordion title="Health">
+    Endpoints para verificação de saúde da API
+  </Accordion>
+  <Accordion title="Users">
+    Gestão completa de usuários (criação, atualização, exclusão)
+  </Accordion>
+  <Accordion title="Contracts">
+    Upload, listagem, atualização e exclusão de contratos
+  </Accordion>
+  <Accordion title="Risk Analysis">
+    Análise de risco de contratos com IA, incluindo identificação de problemas críticos e recomendações
+  </Accordion>
+  <Accordion title="API Keys">
+    Geração e verificação de status de credenciais de API
+  </Accordion>
+</AccordionGroup>
+
+## Formatos de arquivo suportados
+
+Para upload de contratos, os seguintes formatos são aceitos:
+
+- **PDF**: `application/pdf`
+- **DOC**: `application/msword`
+- **DOCX**: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+
+**Tamanho máximo**: 10MB
+
+## Análise de Risco
+
+A análise de risco é processada de forma assíncrona e pode levar alguns minutos para ser concluída. O status da análise pode ser:
+
+- **pending**: Análise aguardando processamento
+- **in_progress**: Análise em andamento
+- **completed**: Análise concluída com sucesso
+- **failed**: Análise falhou
+
+Use o endpoint `GET /risk-analysis/contracts/{contractId}/analysis` para verificar o status e obter os resultados da análise.
+
+## Códigos de resposta
+
+A API utiliza os seguintes códigos de status HTTP:
+
+- `200` - Sucesso
+- `201` - Criado com sucesso
+- `400` - Requisição inválida
+- `401` - Não autorizado (token inválido ou ausente)
+- `403` - Proibido (limite de análises atingido)
+- `404` - Recurso não encontrado
+- `500` - Erro interno do servidor

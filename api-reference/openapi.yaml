@@ -1,0 +1,992 @@
+openapi: 3.1.0
+
+info:
+  title: Verifica AI API
+  description: |
+    API para análise de contratos com inteligência artificial.
+    
+    ## Autenticação
+    
+    Todas as rotas (exceto health check e criação de usuário) requerem autenticação via Firebase.
+    
+    ### Como obter o token:
+    
+    No frontend, após o login com Firebase:
+    
+    ```javascript
+    import { getAuth } from 'firebase/auth';
+    
+    const auth = getAuth();
+    const user = auth.currentUser;
+    
+    if (user) {
+      const token = await user.getIdToken();
+      // Use este token no header Authorization
+    }
+    ```
+    
+    ### Header de autenticação:
+    
+    ```
+    Authorization: Bearer SEU_TOKEN_FIREBASE
+    ```
+  version: 1.0.0
+  contact:
+    name: Verifica AI Support
+    email: support@verifica.ia.br
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.verifica.ia.br
+    description: Produção
+  - url: http://localhost:3333
+    description: Desenvolvimento
+
+tags:
+  - name: Health
+    description: Endpoints de verificação de saúde da API
+  - name: Users
+    description: Gestão de usuários
+  - name: Contracts
+    description: Gestão de contratos
+  - name: Risk Analysis
+    description: Análise de risco de contratos
+  - name: API Keys
+    description: Gestão de API Keys
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: Health Check
+      description: Verifica se a API está funcionando
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API está funcionando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: API is running
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2025-01-12T16:58:20.130Z"
+                  environment:
+                    type: string
+                    example: production
+
+  /users:
+    post:
+      tags:
+        - Users
+      summary: Criar Usuário
+      description: Cria um novo usuário no sistema
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - ssoId
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  description: Nome do usuário (mínimo 3 caracteres)
+                  example: João Silva
+                email:
+                  type: string
+                  format: email
+                  description: Email do usuário
+                  example: joao.silva@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  description: Senha do usuário (mínimo 6 caracteres)
+                  example: senha123456
+                ssoId:
+                  type: string
+                  description: ID do usuário no Firebase
+                  example: firebase-uid-123456
+      responses:
+        '201':
+          description: Usuário criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/{id}:
+    put:
+      tags:
+        - Users
+      summary: Atualizar Usuário
+      description: Atualiza dados do usuário
+      operationId: updateUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  example: João Silva Atualizado
+                email:
+                  type: string
+                  format: email
+                  example: joao.novo@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: novaSenha123
+                ssoId:
+                  type: string
+                  example: firebase-uid-123456
+      responses:
+        '200':
+          description: Usuário atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Users
+      summary: Deletar Usuário
+      description: Deleta um usuário
+      operationId: deleteUser
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do usuário
+      responses:
+        '200':
+          description: Usuário deletado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /contracts:
+    get:
+      tags:
+        - Contracts
+      summary: Listar Contratos
+      description: Lista todos os contratos do usuário autenticado com paginação
+      operationId: listContracts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Número da página
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Itens por página
+      responses:
+        '200':
+          description: Lista de contratos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedContracts'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags:
+        - Contracts
+      summary: Upload de Contrato
+      description: |
+        Faz upload de um contrato (PDF ou DOC/DOCX) para o Supabase Storage.
+        
+        **Formatos aceitos:**
+        - PDF: application/pdf
+        - DOC: application/msword
+        - DOCX: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        
+        **Tamanho máximo:** 10MB
+        
+        **Status inicial:** draft
+      operationId: uploadContract
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo do contrato (PDF, DOC ou DOCX, máximo 10MB)
+                name:
+                  type: string
+                  description: Nome do contrato (opcional, se não informado usa o nome do arquivo)
+                  example: Contrato de Locação
+      responses:
+        '201':
+          description: Contrato criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /contracts/{id}:
+    put:
+      tags:
+        - Contracts
+      summary: Atualizar Contrato
+      description: Atualiza o nome e/ou status de um contrato
+      operationId: updateContract
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do contrato
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Contrato Atualizado
+                status:
+                  $ref: '#/components/schemas/ContractStatus'
+      responses:
+        '200':
+          description: Contrato atualizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags:
+        - Contracts
+      summary: Deletar Contrato
+      description: Deleta um contrato e remove o arquivo do Supabase Storage
+      operationId: deleteContract
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do contrato
+      responses:
+        '200':
+          description: Contrato deletado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Contract deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /risk-analysis/contracts/{contractId}/analyze:
+    post:
+      tags:
+        - Risk Analysis
+      summary: Iniciar Análise de Risco
+      description: |
+        Inicia uma análise de risco para um contrato específico.
+        
+        A análise é processada de forma assíncrona e pode levar alguns minutos para ser concluída.
+        Use o endpoint GET para verificar o status e obter os resultados da análise.
+      operationId: analyzeContract
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: contractId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do contrato a ser analisado
+      responses:
+        '200':
+          description: Análise iniciada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractAnalysis'
+              example:
+                _id: "analysis-uuid"
+                contractId: "contract-uuid"
+                userId: "user-uuid"
+                status: "in_progress"
+                overallRisk: "MEDIUM"
+                riskScore: 0
+                summary: ""
+                sections: []
+                criticalIssues: []
+                recommendations: []
+                analyzedAt:
+                  $date: "2025-01-12T16:58:20.130Z"
+                modelVersion: "1.0.0"
+                createdAt:
+                  $date: "2025-01-12T16:58:20.130Z"
+                updatedAt:
+                  $date: "2025-01-12T16:58:20.130Z"
+                __v: 0
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Limite de análises atingido ou plano bloqueado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Plan limit reached"
+                errors:
+                  - "You have reached your analysis limit for this plan"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /risk-analysis/contracts/{contractId}/analysis:
+    get:
+      tags:
+        - Risk Analysis
+      summary: Obter Análise de Risco
+      description: |
+        Retorna o resultado da análise de risco de um contrato.
+        
+        O status da análise pode ser:
+        - **pending**: Análise aguardando processamento
+        - **in_progress**: Análise em andamento
+        - **completed**: Análise concluída com sucesso
+        - **failed**: Análise falhou
+      operationId: getContractAnalysis
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: contractId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do contrato
+      responses:
+        '200':
+          description: Análise encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractAnalysis'
+              examples:
+                completed:
+                  value:
+                    _id: "analysis-uuid"
+                    contractId: "contract-uuid"
+                    userId: "user-uuid"
+                    status: "completed"
+                    overallRisk: "MEDIUM"
+                    riskScore: 65
+                    summary: "Este contrato apresenta riscos moderados em algumas cláusulas específicas. Recomenda-se revisão cuidadosa das seções de pagamento e rescisão."
+                    sections:
+                      - sectionId: "payment"
+                        sectionTitle: "Pagamento"
+                        riskLevel: "MEDIUM"
+                        riskScore: 60
+                        issues:
+                          - type: "FINANCIAL"
+                            severity: "MEDIUM"
+                            description: "Prazo de pagamento não especificado claramente"
+                        clauses:
+                          - clauseId: "clause-1"
+                            clauseTitle: "Cláusula de Pagamento"
+                            riskLevel: "MEDIUM"
+                            riskScore: 60
+                            issues:
+                              - type: "FINANCIAL"
+                                severity: "MEDIUM"
+                                description: "Prazo de pagamento não especificado claramente"
+                            explanation: "A cláusula não define claramente o prazo para pagamento"
+                    criticalIssues:
+                      - issue:
+                          type: "LEGAL"
+                          severity: "HIGH"
+                          description: "Cláusula de rescisão unilateral pode ser abusiva"
+                        impact: "Alto risco de perda financeira em caso de rescisão"
+                        urgency: "IMMEDIATE"
+                    recommendations:
+                      - priority: "HIGH"
+                        category: "Legal"
+                        description: "Revisar cláusula de rescisão com advogado"
+                        actionItems:
+                          - "Negociar termos de rescisão mais equilibrados"
+                          - "Adicionar cláusula de aviso prévio"
+                    analyzedAt:
+                      $date: "2025-01-12T17:30:00.000Z"
+                    modelVersion: "1.0.0"
+                    createdAt:
+                      $date: "2025-01-12T16:58:20.130Z"
+                    updatedAt:
+                      $date: "2025-01-12T17:30:00.000Z"
+                    __v: 0
+                in_progress:
+                  value:
+                    _id: "analysis-uuid"
+                    contractId: "contract-uuid"
+                    userId: "user-uuid"
+                    status: "in_progress"
+                    overallRisk: "LOW"
+                    riskScore: 0
+                    summary: ""
+                    sections: []
+                    criticalIssues: []
+                    recommendations: []
+                    analyzedAt:
+                      $date: "2025-01-12T16:58:20.130Z"
+                    modelVersion: "1.0.0"
+                    createdAt:
+                      $date: "2025-01-12T16:58:20.130Z"
+                    updatedAt:
+                      $date: "2025-01-12T16:58:20.130Z"
+                    __v: 0
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Análise não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Analysis not found for this contract"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api-keys/generate:
+    post:
+      tags:
+        - API Keys
+      summary: Gerar API Keys
+      description: Gera novas credenciais de API para o usuário autenticado
+      operationId: generateApiKeys
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: API Keys geradas com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
+                    example: vk_live_abc123def456...
+                  apiSecret:
+                    type: string
+                    example: vsk_live_xyz789uvw012...
+                  message:
+                    type: string
+                    example: API credentials generated successfully.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api-keys/status:
+    get:
+      tags:
+        - API Keys
+      summary: Verificar Status das API Keys
+      description: Retorna o status das API Keys do usuário autenticado
+      operationId: getApiKeyStatus
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Status das API Keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasApiKey:
+                    type: boolean
+                    example: true
+                  apiKey:
+                    type: string
+                    example: vk_live_abc1...xyz9
+                  plan:
+                    type: string
+                    example: PRO
+                  hasApiAccess:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de autenticação Firebase
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID único do usuário
+        name:
+          type: string
+          description: Nome do usuário
+        email:
+          type: string
+          format: email
+          description: Email do usuário
+        ssoId:
+          type: string
+          description: ID do usuário no Firebase
+
+    Contract:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID único do contrato
+        name:
+          type: string
+          description: Nome do contrato
+        url:
+          type: string
+          format: uri
+          description: URL do arquivo no Supabase Storage
+        fileSize:
+          type: integer
+          description: Tamanho do arquivo em bytes
+        date:
+          type: string
+          format: date-time
+          description: Data de criação do contrato
+        status:
+          $ref: '#/components/schemas/ContractStatus'
+        userId:
+          type: string
+          format: uuid
+          description: ID do usuário proprietário
+
+    ContractStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - in_analysis
+        - finalized
+      description: |
+        Status do contrato:
+        - **draft**: Rascunho (padrão ao fazer upload)
+        - **active**: Ativo
+        - **in_analysis**: Em análise
+        - **finalized**: Finalizado
+
+    PaginatedContracts:
+      type: object
+      properties:
+        contracts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contract'
+        total:
+          type: integer
+          description: Total de contratos
+        page:
+          type: integer
+          description: Página atual
+        limit:
+          type: integer
+          description: Itens por página
+        totalPages:
+          type: integer
+          description: Total de páginas
+
+    RiskLevel:
+      type: string
+      enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+      description: Nível de risco
+
+    IssueType:
+      type: string
+      enum:
+        - LEGAL
+        - FINANCIAL
+        - OPERATIONAL
+        - COMPLIANCE
+      description: Tipo de problema identificado
+
+    IssueSeverity:
+      type: string
+      enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+      description: Severidade do problema
+
+    RecommendationPriority:
+      type: string
+      enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+        - IMMEDIATE
+      description: Prioridade da recomendação
+
+    RecommendationCategory:
+      type: string
+      enum:
+        - Legal
+        - Financeiro
+        - Operacional
+        - Compliance
+      description: Categoria da recomendação
+
+    AnalysisStatus:
+      type: string
+      enum:
+        - pending
+        - in_progress
+        - completed
+        - failed
+      description: Status da análise
+
+    Issue:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/IssueType'
+        severity:
+          $ref: '#/components/schemas/IssueSeverity'
+        description:
+          type: string
+          description: Descrição do problema
+        clauseReference:
+          type: string
+          description: Referência à cláusula (opcional)
+        recommendation:
+          type: string
+          description: Recomendação relacionada (opcional)
+
+    Clause:
+      type: object
+      properties:
+        clauseId:
+          type: string
+          description: ID da cláusula
+        clauseTitle:
+          type: string
+          description: Título da cláusula
+        riskLevel:
+          $ref: '#/components/schemas/RiskLevel'
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Score de risco da cláusula (0-100)
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        explanation:
+          type: string
+          description: Explicação sobre o risco da cláusula
+
+    Section:
+      type: object
+      properties:
+        sectionId:
+          type: string
+          description: ID da seção
+        sectionTitle:
+          type: string
+          description: Título da seção
+        riskLevel:
+          $ref: '#/components/schemas/RiskLevel'
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Score de risco da seção (0-100)
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        clauses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Clause'
+
+    CriticalIssue:
+      type: object
+      properties:
+        issue:
+          $ref: '#/components/schemas/Issue'
+        impact:
+          type: string
+          description: Impacto do problema crítico
+        urgency:
+          $ref: '#/components/schemas/RecommendationPriority'
+
+    Recommendation:
+      type: object
+      properties:
+        priority:
+          $ref: '#/components/schemas/RecommendationPriority'
+        category:
+          $ref: '#/components/schemas/RecommendationCategory'
+        description:
+          type: string
+          description: Descrição da recomendação
+        actionItems:
+          type: array
+          items:
+            type: string
+          description: Lista de ações recomendadas
+
+    ContractAnalysis:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: ID único da análise
+        contractId:
+          type: string
+          format: uuid
+          description: ID do contrato analisado
+        userId:
+          type: string
+          format: uuid
+          description: ID do usuário proprietário
+        overallRisk:
+          $ref: '#/components/schemas/RiskLevel'
+        riskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Score geral de risco (0-100)
+        summary:
+          type: string
+          description: Resumo da análise
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+        criticalIssues:
+          type: array
+          items:
+            $ref: '#/components/schemas/CriticalIssue'
+        recommendations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recommendation'
+        status:
+          $ref: '#/components/schemas/AnalysisStatus'
+        analyzedAt:
+          type: object
+          properties:
+            $date:
+              type: string
+              format: date-time
+          description: Data e hora da análise
+        modelVersion:
+          type: string
+          description: Versão do modelo de IA utilizado
+        learningContext:
+          type: string
+          description: Contexto de aprendizado (opcional)
+        createdAt:
+          type: object
+          properties:
+            $date:
+              type: string
+              format: date-time
+          description: Data de criação
+        updatedAt:
+          type: object
+          properties:
+            $date:
+              type: string
+              format: date-time
+          description: Data de atualização
+        __v:
+          type: integer
+          description: Versão do documento (MongoDB)
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Mensagem de erro
+        errors:
+          type: array
+          items:
+            type: object
+          description: Lista de erros de validação (opcional)
+
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: File is required
+            errors: []
+
+    Unauthorized:
+      description: Não autorizado - Token inválido ou ausente
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missingToken:
+              value:
+                message: Authorization header is required
+            expiredToken:
+              value:
+                message: Token expired
+
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Contract not found
+
+    InternalServerError:
+      description: Erro interno do servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: Internal server error
+

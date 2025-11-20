@@ -1,0 +1,78 @@
+---
+title: 'Autenticação'
+description: 'Como autenticar requisições na API Verifica AI'
+---
+
+## Visão Geral
+
+A API Verifica AI utiliza autenticação via Firebase para proteger os endpoints. Todas as rotas (exceto health check e criação de usuário) requerem um token de autenticação válido.
+
+## Como Obter o Token
+
+No frontend, após o login com Firebase:
+
+```javascript
+import { getAuth } from 'firebase/auth';
+
+const auth = getAuth();
+const user = auth.currentUser;
+
+if (user) {
+  const token = await user.getIdToken();
+  // Use este token no header Authorization
+}
+```
+
+## Header de Autenticação
+
+Inclua o token no header `Authorization` de todas as requisições autenticadas:
+
+```
+Authorization: Bearer SEU_TOKEN_FIREBASE
+```
+
+## Exemplo de Requisição
+
+<RequestExample>
+
+```bash
+curl -X GET https://api.verifica.ia.br/contracts \
+  -H "Authorization: Bearer SEU_TOKEN_FIREBASE" \
+  -H "Content-Type: application/json"
+```
+
+</RequestExample>
+
+## Endpoints Públicos
+
+Os seguintes endpoints não requerem autenticação:
+
+- `GET /` - Health Check
+- `POST /users` - Criar Usuário
+
+Todos os outros endpoints requerem autenticação válida.
+
+## Tratamento de Erros
+
+<ResponseField name="401 Unauthorized" type="object">
+  Retornado quando o token está ausente, inválido ou expirado.
+
+  ```json
+  {
+    "message": "Authorization header is required"
+  }
+  ```
+
+  ou
+
+  ```json
+  {
+    "message": "Token expired"
+  }
+  ```
+</ResponseField>
+
+<Warning>
+  Mantenha seus tokens seguros e nunca os exponha em código público ou repositórios versionados.
+</Warning>
+
