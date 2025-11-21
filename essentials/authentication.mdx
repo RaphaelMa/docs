@@ -1,78 +1,244 @@
 ---
 title: 'Autenticação'
-description: 'Como autenticar requisições na API Verifica AI'
+description: 'Como autenticar requisições na API Verifica AI usando JWT'
 ---
 
 ## Visão Geral
 
-A API Verifica AI utiliza autenticação via Firebase para proteger os endpoints. Todas as rotas (exceto health check e criação de usuário) requerem um token de autenticação válido.
+A API Verifica AI oferece autenticação via JWT (JSON Web Token) para acesso programático aos endpoints da API.
 
-## Como Obter o Token
+## Endpoints de Autenticação
 
-No frontend, após o login com Firebase:
+### POST `/auth/login`
 
-```javascript
-import { getAuth } from 'firebase/auth';
-
-const auth = getAuth();
-const user = auth.currentUser;
-
-if (user) {
-  const token = await user.getIdToken();
-  // Use este token no header Authorization
-}
-```
-
-## Header de Autenticação
-
-Inclua o token no header `Authorization` de todas as requisições autenticadas:
-
-```
-Authorization: Bearer SEU_TOKEN_FIREBASE
-```
-
-## Exemplo de Requisição
+Autentica um usuário com email e senha, retornando um token JWT para uso na API.
 
 <RequestExample>
 
 ```bash
-curl -X GET https://api.verifica.ia.br/contracts \
-  -H "Authorization: Bearer SEU_TOKEN_FIREBASE" \
-  -H "Content-Type: application/json"
+curl -X POST https://api.verifica.ia.br/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@example.com",
+    "password": "senha123456"
+  }'
 ```
 
 </RequestExample>
 
-## Endpoints Públicos
-
-Os seguintes endpoints não requerem autenticação:
-
-- `GET /` - Health Check
-- `POST /users` - Criar Usuário
-
-Todos os outros endpoints requerem autenticação válida.
-
-## Tratamento de Erros
-
-<ResponseField name="401 Unauthorized" type="object">
-  Retornado quando o token está ausente, inválido ou expirado.
-
+<ResponseField name="200 - Sucesso" type="object">
   ```json
   {
-    "message": "Authorization header is required"
-  }
-  ```
-
-  ou
-
-  ```json
-  {
-    "message": "Token expired"
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "uuid-do-usuario",
+      "email": "usuario@example.com",
+      "name": "Nome do Usuário",
+      "plan": "PRO"
+    }
   }
   ```
 </ResponseField>
 
-<Warning>
-  Mantenha seus tokens seguros e nunca os exponha em código público ou repositórios versionados.
-</Warning>
+<ResponseField name="401 - Credenciais Inválidas" type="object">
+  ```json
+  {
+    "message": "Invalid email or password",
+    "error": "INVALID_CREDENTIALS"
+  }
+  ```
+</ResponseField>
 
+<ResponseField name="403 - Acesso negado" type="object">
+  ```json
+  {
+    "message": "Access denied",
+    "error": "ACCESS_DENIED"
+  }
+  ```
+</ResponseField>
+
+## Como Usar o Token JWT
+
+Após obter o token através do endpoint `/auth/login`, você deve incluí-lo no header `Authorization` de todas as requisições:
+
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+### Exemplo Completo
+
+<CodeGroup>
+
+```bash Login e uso do token
+# 1. Fazer login
+curl -X POST https://api.verifica.ia.br/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@example.com",
+    "password": "senha123456"
+  }'
+
+# Resposta:
+# {
+#   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "user": { ... }
+# }
+
+# 2. Usar o token em requisições
+curl -X GET https://api.verifica.ia.br/contracts \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```javascript JavaScript/Node.js
+const axios = require('axios');
+
+async function login(email, password) {
+  const response = await axios.post('https://api.verifica.ia.br/auth/login', {
+    email,
+    password
+  });
+  
+  return response.data.token;
+}
+
+async function getContracts(token) {
+  const response = await axios.get('https://api.verifica.ia.br/contracts', {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  
+  return response.data;
+}
+
+// Uso
+(async () => {
+  const token = await login('usuario@example.com', 'senha123');
+  const contracts = await getContracts(token);
+  console.log(contracts);
+})();
+```
+
+```python Python
+import requests
+
+def login(email, password):
+    response = requests.post(
+        'https://api.verifica.ia.br/auth/login',
+        json={'email': email, 'password': password}
+    )
+    return response.json()['token']
+
+def get_contracts(token):
+    headers = {'Authorization': f'Bearer {token}'}
+    response = requests.get(
+        'https://api.verifica.ia.br/contracts',
+        headers=headers
+    )
+    return response.json()
+
+# Uso
+token = login('usuario@example.com', 'senha123')
+contracts = get_contracts(token)
+print(contracts)
+```
+
+</CodeGroup>
+
+## Compatibilidade com Endpoints
+
+O token JWT funciona com **todos os endpoints** da API que requerem autenticação:
+
+- ✅ `/contracts` - Gerenciamento de contratos
+- ✅ `/risk-analysis` - Análise de risco
+- ✅ `/dashboard` - Dados do dashboard
+- ✅ `/notifications` - Notificações
+- ✅ `/users` - Dados do usuário
+- ✅ `/subscriptions` - Assinaturas
+- ✅ `/chat` - Chat com assistente
+
+O middleware de autenticação aceita tanto tokens **Firebase** (usados no frontend) quanto tokens **JWT** (usados na API), então você pode usar o mesmo token JWT em todos os endpoints.
+
+## Segurança
+
+### Validação de Token
+
+- Tokens JWT são assinados com chave secreta
+- Tokens inválidos ou expirados retornam erro 401
+- Tokens devem ser mantidos seguros e nunca expostos publicamente
+
+## Códigos de Erro
+
+<Table>
+  <TableHead>
+    <TableRow>
+      <TableHeader>Código</TableHeader>
+      <TableHeader>Descrição</TableHeader>
+    </TableRow>
+  </TableHead>
+  <TableBody>
+    <TableRow>
+      <TableCell><code>MISSING_CREDENTIALS</code></TableCell>
+      <TableCell>Email ou senha não fornecidos</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>INVALID_CREDENTIALS</code></TableCell>
+      <TableCell>Email ou senha incorretos</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>ACCESS_DENIED</code></TableCell>
+      <TableCell>Acesso negado</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>MISSING_AUTHORIZATION_HEADER</code></TableCell>
+      <TableCell>Header Authorization não fornecido</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>MISSING_TOKEN</code></TableCell>
+      <TableCell>Token não fornecido no header</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>TOKEN_EXPIRED</code></TableCell>
+      <TableCell>Token JWT expirado</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>INVALID_TOKEN</code></TableCell>
+      <TableCell>Token JWT inválido ou malformado</TableCell>
+    </TableRow>
+    <TableRow>
+      <TableCell><code>AUTHENTICATION_FAILED</code></TableCell>
+      <TableCell>Falha geral na autenticação</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title='Erro: "Token expired"'>
+    **Causa**: O token JWT expirou.
+    
+    **Solução**: Faça login novamente para obter um novo token.
+  </Accordion>
+  
+  <Accordion title='Erro: "Invalid email or password"'>
+    **Causa**: Credenciais incorretas ou usuário não existe.
+    
+    **Solução**: Verifique se o email e senha estão corretos. Se você esqueceu a senha, use a funcionalidade de recuperação de senha.
+  </Accordion>
+  
+  <Accordion title='Erro: "Access denied"'>
+    **Causa**: Acesso negado à API.
+    
+    **Solução**: Entre em contato com o suporte para verificar seu acesso.
+  </Accordion>
+</AccordionGroup>
+
+## Suporte
+
+Para dúvidas ou problemas com a autenticação JWT, entre em contato:
+
+- **Email**: contato@verifica.ia.br
+- **Documentação completa**: https://docs.verifica.ia.br

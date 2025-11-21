@@ -23,31 +23,38 @@ A API Verifica AI oferece uma solução completa para análise de contratos util
 
 ## Autenticação
 
-A maioria dos endpoints da API requer autenticação via Firebase. Apenas os endpoints de **Health Check** e **Criação de Usuário** não requerem autenticação.
+A maioria dos endpoints da API requer autenticação via JWT (JSON Web Token). Apenas os endpoints de **Health Check** e **Criação de Usuário** não requerem autenticação.
 
 ### Como obter o token
 
-No frontend, após o login com Firebase:
+Faça login através do endpoint `/auth/login` com suas credenciais:
 
-```javascript
-import { getAuth } from 'firebase/auth';
-
-const auth = getAuth();
-const user = auth.currentUser;
-
-if (user) {
-  const token = await user.getIdToken();
-  // Use este token no header Authorization
-}
+```bash
+curl -X POST https://api.verifica.ia.br/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "usuario@example.com",
+    "password": "senha123456"
+  }'
 ```
+
+A resposta incluirá um token JWT que você deve usar nas requisições subsequentes.
 
 ### Header de autenticação
 
 Inclua o token no header `Authorization` de todas as requisições autenticadas:
 
 ```
-Authorization: Bearer SEU_TOKEN_FIREBASE
+Authorization: Bearer SEU_TOKEN_JWT
 ```
+
+<Card
+  title="Ver guia completo de autenticação"
+  icon="lock"
+  href="/essentials/authentication"
+>
+  Aprenda mais sobre autenticação JWT, códigos de erro e troubleshooting
+</Card>
 
 ## Servidores
 

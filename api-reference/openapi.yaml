@@ -7,29 +7,28 @@ info:
     
     ## Autenticação
     
-    Todas as rotas (exceto health check e criação de usuário) requerem autenticação via Firebase.
+    A API Verifica AI oferece autenticação via JWT (JSON Web Token) para acesso programático aos endpoints da API.
     
     ### Como obter o token:
     
-    No frontend, após o login com Firebase:
+    Faça login através do endpoint `/auth/login` com suas credenciais:
     
-    ```javascript
-    import { getAuth } from 'firebase/auth';
-    
-    const auth = getAuth();
-    const user = auth.currentUser;
-    
-    if (user) {
-      const token = await user.getIdToken();
-      // Use este token no header Authorization
-    }
+    ```bash
+    curl -X POST https://api.verifica.ia.br/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "usuario@example.com",
+        "password": "senha123456"
+      }'
     ```
     
     ### Header de autenticação:
     
     ```
-    Authorization: Bearer SEU_TOKEN_FIREBASE
+    Authorization: Bearer SEU_TOKEN_JWT
     ```
+    
+    Para mais informações, consulte a [documentação completa de autenticação](/essentials/authentication).
   version: 1.0.0
   contact:
     name: Verifica AI Support
@@ -46,6 +45,8 @@ servers:
 tags:
   - name: Health
     description: Endpoints de verificação de saúde da API
+  - name: Authentication
+    description: Autenticação JWT para acesso programático à API
   - name: Users
     description: Gestão de usuários
   - name: Contracts
@@ -84,6 +85,81 @@ paths:
                   environment:
                     type: string
                     example: production
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login
+      description: |
+        Autentica um usuário com email e senha, retornando um token JWT para uso na API.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Email do usuário
+                  example: usuario@example.com
+                password:
+                  type: string
+                  description: Senha do usuário
+                  example: senha123456
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Token JWT para autenticação
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: uuid-do-usuario
+                      email:
+                        type: string
+                        format: email
+                        example: usuario@example.com
+                      name:
+                        type: string
+                        example: Nome do Usuário
+                      plan:
+                        type: string
+                        example: PRO
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Invalid email or password
+                error: INVALID_CREDENTIALS
+        '403':
+          description: Acesso negado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: Access denied
+                error: ACCESS_DENIED
 
   /users:
     post:
@@ -638,7 +714,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Token de autenticação Firebase
+      description: |
+        Token JWT obtido através do endpoint `/auth/login`.
+        
+        Inclua o token no header: `Authorization: Bearer SEU_TOKEN_JWT`
 
   schemas:
     User:

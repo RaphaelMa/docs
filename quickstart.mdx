@@ -10,19 +10,20 @@ Configure sua integração com a API Verifica AI e comece a analisar contratos c
 ### Passo 1: Autenticação
 
 <AccordionGroup>
-  <Accordion icon="lock" title="Configure a autenticação Firebase">
-    A API Verifica AI utiliza autenticação via Firebase. Você precisará:
+  <Accordion icon="lock" title="Configure a autenticação JWT">
+    A API Verifica AI utiliza autenticação via JWT. Você precisará:
     
-    1. Configurar um projeto Firebase
-    2. Obter o token de autenticação após o login
-    3. Incluir o token no header `Authorization` de todas as requisições
+    1. Ter um plano PRO ativo
+    2. Fazer login através do endpoint `/auth/login` com email e senha
+    3. Obter o token JWT da resposta
+    4. Incluir o token no header `Authorization` de todas as requisições
     
     <Card
       title="Ver guia completo de autenticação"
       icon="lock"
       href="/essentials/authentication"
     >
-      Aprenda como configurar e usar a autenticação
+      Aprenda como configurar e usar a autenticação JWT
     </Card>
   </Accordion>
   <Accordion icon="rectangle-terminal" title="Teste sua primeira requisição">
@@ -83,7 +84,7 @@ Agora que você já fez sua primeira requisição, explore mais funcionalidades:
 <CardGroup cols={2}>
 
 <Card title="Autenticação" icon="lock" href="/essentials/authentication">
-  Configure e entenda a autenticação Firebase
+  Configure e entenda a autenticação JWT
 </Card>
 
 <Card title="Referência da API" icon="code" href="/api-reference/introduction">
