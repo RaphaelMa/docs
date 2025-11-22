@@ -7,7 +7,7 @@ description: 'Documentação completa da API Verifica AI para análise de contra
 
 A API Verifica AI oferece uma solução completa para análise de contratos utilizando inteligência artificial. Com esta API, você pode:
 
-- Gerenciar usuários e contratos
+- Gerenciar contratos
 - Fazer upload de contratos (PDF, DOC, DOCX)
 - Realizar análises de risco automatizadas
 - Obter recomendações detalhadas sobre cláusulas contratuais
@@ -23,7 +23,7 @@ A API Verifica AI oferece uma solução completa para análise de contratos util
 
 ## Autenticação
 
-A maioria dos endpoints da API requer autenticação via JWT (JSON Web Token). Apenas os endpoints de **Health Check** e **Criação de Usuário** não requerem autenticação.
+A maioria dos endpoints da API requer autenticação via JWT (JSON Web Token). Apenas os endpoints de **Health Check** não requerem autenticação.
 
 ### Como obter o token
 
@@ -65,14 +65,11 @@ A API está disponível em dois ambientes:
 
 ## Estrutura da API
 
-A API está organizada em cinco grupos principais:
+A API está organizada em quatro grupos principais:
 
 <AccordionGroup>
   <Accordion title="Health">
     Endpoints para verificação de saúde da API
-  </Accordion>
-  <Accordion title="Users">
-    Gestão completa de usuários (criação, atualização, exclusão)
   </Accordion>
   <Accordion title="Contracts">
     Upload, listagem, atualização e exclusão de contratos

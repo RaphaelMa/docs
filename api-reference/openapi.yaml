@@ -47,8 +47,6 @@ tags:
     description: Endpoints de verificação de saúde da API
   - name: Authentication
     description: Autenticação JWT para acesso programático à API
-  - name: Users
-    description: Gestão de usuários
   - name: Contracts
     description: Gestão de contratos
   - name: Risk Analysis
@@ -160,144 +158,6 @@ paths:
               example:
                 message: Access denied
                 error: ACCESS_DENIED
-
-  /users:
-    post:
-      tags:
-        - Users
-      summary: Criar Usuário
-      description: Cria um novo usuário no sistema
-      operationId: createUser
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-                - email
-                - password
-                - ssoId
-              properties:
-                name:
-                  type: string
-                  minLength: 3
-                  description: Nome do usuário (mínimo 3 caracteres)
-                  example: João Silva
-                email:
-                  type: string
-                  format: email
-                  description: Email do usuário
-                  example: joao.silva@example.com
-                password:
-                  type: string
-                  minLength: 6
-                  description: Senha do usuário (mínimo 6 caracteres)
-                  example: senha123456
-                ssoId:
-                  type: string
-                  description: ID do usuário no Firebase
-                  example: firebase-uid-123456
-      responses:
-        '201':
-          description: Usuário criado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-
-  /users/{id}:
-    put:
-      tags:
-        - Users
-      summary: Atualizar Usuário
-      description: Atualiza dados do usuário
-      operationId: updateUser
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: ID do usuário
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:
-                  type: string
-                  minLength: 3
-                  example: João Silva Atualizado
-                email:
-                  type: string
-                  format: email
-                  example: joao.novo@example.com
-                password:
-                  type: string
-                  minLength: 6
-                  example: novaSenha123
-                ssoId:
-                  type: string
-                  example: firebase-uid-123456
-      responses:
-        '200':
-          description: Usuário atualizado com sucesso
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    delete:
-      tags:
-        - Users
-      summary: Deletar Usuário
-      description: Deleta um usuário
-      operationId: deleteUser
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: ID do usuário
-      responses:
-        '200':
-          description: Usuário deletado com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: User deleted successfully
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
 
   /contracts:
     get:
@@ -720,24 +580,6 @@ components:
         Inclua o token no header: `Authorization: Bearer SEU_TOKEN_JWT`
 
   schemas:
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: ID único do usuário
-        name:
-          type: string
-          description: Nome do usuário
-        email:
-          type: string
-          format: email
-          description: Email do usuário
-        ssoId:
-          type: string
-          description: ID do usuário no Firebase
-
     Contract:
       type: object
       properties:
